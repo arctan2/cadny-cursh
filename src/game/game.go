@@ -8,9 +8,14 @@ import (
 )
 
 type level struct {
-	board [][]candy
-	posX  int
-	posY  int
+	board  [][]candy
+	posX   int
+	posY   int
+	cursor cursor
+}
+
+type cursor struct {
+	x, y int
 }
 
 func newLevel(rowCount, colCount, posX, posY int) *level {
@@ -18,12 +23,41 @@ func newLevel(rowCount, colCount, posX, posY int) *level {
 	for i := range newBoard {
 		newBoard[i] = make([]candy, colCount)
 	}
-	l := level{newBoard, posX, posY}
+	l := level{newBoard, posX, posY, cursor{}}
 	return &l
 }
 
-func handleKeyboardEvent(kEvent keyboardEvent) bool {
+func validateCursor(curs *cursor, xmax, ymax int) {
+	if curs.x < 0 {
+		curs.x = xmax - 1
+	} else if curs.x >= xmax {
+		curs.x = 0
+	}
+
+	if curs.y < 0 {
+		curs.y = ymax - 1
+	} else if curs.y >= ymax {
+		curs.y = 0
+	}
+}
+
+func (lev *level) handleKeyboardEvent(kEvent keyboardEvent) bool {
 	switch kEvent.eventType {
+	case MOVE:
+		if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
+			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
+		}
+		switch kEvent.key {
+		case termbox.KeyArrowDown:
+			lev.cursor.y++
+		case termbox.KeyArrowUp:
+			lev.cursor.y--
+		case termbox.KeyArrowLeft:
+			lev.cursor.x--
+		case termbox.KeyArrowRight:
+			lev.cursor.x++
+		}
+		validateCursor(&lev.cursor, len(lev.board[0]), len(lev.board))
 	case END:
 		return true
 	}
@@ -53,7 +87,7 @@ mainloop:
 	for {
 		select {
 		case e := <-keyboardChan:
-			if breakLoop := handleKeyboardEvent(e); breakLoop {
+			if breakLoop := lev.handleKeyboardEvent(e); breakLoop {
 				break mainloop
 			}
 		default:

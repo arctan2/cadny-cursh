@@ -27,4 +27,5 @@ func (lev *level) initBoard() {
 	}
 
 	initBoardAnimation(lev)
+	go blinkCursor(lev)
 }

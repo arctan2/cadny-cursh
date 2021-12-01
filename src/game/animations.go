@@ -8,6 +8,8 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+var prevCellColor termbox.Attribute
+
 func setBg(x, y int, candyColor termbox.Attribute) {
 	termbox.SetBg(x, y, candyColor)
 	termbox.SetBg(x+1, y, candyColor)
@@ -20,25 +22,12 @@ func setBg(x, y int, candyColor termbox.Attribute) {
 	[x, y, z]
 ]
 
-y = 2
-
- x  p  a
--1 -3 -5
- y  y  y
- 3  3
- 4  4
- 5
- 6
-
-candies relative poses
-
 x -> -1, p -> -3, a -> -5
 x ->  2, p -> -2, a -> -4
 x ->  3, p -> -1, a -> -3
 x ->  4, p ->  2, a -> -2
 x ->  5, p ->  3, a -> -1
 x ->  6, p ->  4, a ->  2
-
 */
 
 func fallAnimation(lev *level, colIdx, paintIdx int, wg *sync.WaitGroup, mut *sync.Mutex) {
@@ -49,7 +38,6 @@ func fallAnimation(lev *level, colIdx, paintIdx int, wg *sync.WaitGroup, mut *sy
 	}
 
 	for iterCount := 0; iterCount < rowCount*2; iterCount++ {
-		mut.Lock()
 		for i := rowCount - 1; i >= 0; i-- {
 			setBg(paintIdx, candiesPosY[i], lev.board[i][colIdx].color)
 			setBg(paintIdx, candiesPosY[i]-1, defaultColor)
@@ -59,9 +47,10 @@ func fallAnimation(lev *level, colIdx, paintIdx int, wg *sync.WaitGroup, mut *sy
 				candiesPosY[i] = lev.posY
 			}
 		}
+		mut.Lock()
 		termbox.Flush()
 		mut.Unlock()
-		time.Sleep(time.Millisecond * time.Duration(10+rand.Intn(100)))
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
 	}
 	wg.Done()
 }
@@ -77,4 +66,16 @@ func initBoardAnimation(lev *level) {
 		paintIdx += 4
 	}
 	wg.Wait()
+}
+
+func blinkCursor(lev *level) {
+	for {
+		if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
+			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
+		} else {
+			prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
+			lev.board[lev.cursor.y][lev.cursor.x].color = defaultColor
+		}
+		time.Sleep(time.Millisecond * 300)
+	}
 }

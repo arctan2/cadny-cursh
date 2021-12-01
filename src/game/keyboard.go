@@ -9,6 +9,7 @@ type keyboardEventType int
 // Keyboard events
 const (
 	END keyboardEventType = 1 + iota
+	MOVE
 )
 
 type keyboardEvent struct {
@@ -23,6 +24,14 @@ func listenToKeyboard(evChan chan keyboardEvent) {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
+			case termbox.KeyArrowLeft:
+				fallthrough
+			case termbox.KeyArrowDown:
+				fallthrough
+			case termbox.KeyArrowRight:
+				fallthrough
+			case termbox.KeyArrowUp:
+				evChan <- keyboardEvent{eventType: MOVE, key: ev.Key}
 			case termbox.KeyEsc:
 				evChan <- keyboardEvent{eventType: END, key: ev.Key}
 			}
