@@ -3,27 +3,27 @@ package game
 import "github.com/nsf/termbox-go"
 
 var (
-	defaultColor = termbox.ColorDefault
+	defaultColor   = termbox.ColorDefault
+	boardStartPosX = 3
+	boardStartPosY = 2
 )
 
-func render() {
+func (l *level) render() {
 	termbox.Clear(defaultColor, defaultColor)
 
-	renderBoard()
+	renderBoard(l, boardStartPosX, boardStartPosY)
 
 	termbox.Flush()
 }
 
-func renderBoard() {
-	x, y := 1, 1
-
-	for _, row := range board {
+func renderBoard(lev *level, startX, startY int) {
+	x, y := startX, startY
+	for _, row := range lev.board {
 		for _, candy := range row {
-			termbox.SetBg(x, y, candy.color)
-			termbox.SetBg(x+1, y, candy.color)
+			setBg(x, y, candy.color)
 			x += 4
 		}
 		y += 2
-		x = 1
+		x = startX
 	}
 }
