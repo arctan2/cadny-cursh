@@ -29,16 +29,19 @@ func newLevel(rowCount, colCount, posX, posY int) *level {
 	return &l
 }
 
-func validateCursor(curs cursor, xmax, ymax int) {
+func (lev *level) validateCursor() {
+	curs := &lev.cursor
+	xmax, ymax := len(lev.board[0])-1, len(lev.board)-1
+
 	if curs.x < 0 {
-		curs.x = xmax - 1
-	} else if curs.x >= xmax {
+		curs.x = xmax
+	} else if curs.x > xmax {
 		curs.x = 0
 	}
 
 	if curs.y < 0 {
-		curs.y = ymax - 1
-	} else if curs.y >= ymax {
+		curs.y = ymax
+	} else if curs.y > ymax {
 		curs.y = 0
 	}
 }
@@ -57,7 +60,7 @@ func (lev *level) navigate(kEvent keyboardEvent) {
 	case termbox.KeyArrowRight:
 		lev.cursor.x++
 	}
-	validateCursor(lev.cursor, len(lev.board[0]), len(lev.board))
+	lev.validateCursor()
 }
 
 func (lev *level) toggleSelected() bool {

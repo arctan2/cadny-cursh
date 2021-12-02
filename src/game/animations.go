@@ -31,9 +31,11 @@ x ->  5, p ->  3, a -> -1
 x ->  6, p ->  4, a ->  2
 */
 
-func fallAnimation(lev *level, colIdx, paintIdx int, wg *sync.WaitGroup, mut *sync.Mutex) {
-	var rowCount int = len(lev.board)
+func fallAnimation(lev *level, colIdx int, wg *sync.WaitGroup, mut *sync.Mutex) {
+	rowCount := len(lev.board)
 	candiesPosY := make([]int, len(lev.board))
+	paintIdx := coordX(lev.posX, colIdx)
+
 	for i, yPos := 0, (rowCount*2-1)*-1; i < rowCount; i, yPos = i+1, yPos+2 {
 		candiesPosY[i] = yPos
 	}
@@ -60,13 +62,16 @@ func initBoardAnimation(lev *level) {
 	var wg sync.WaitGroup
 	var mut sync.Mutex
 
-	paintIdx := lev.posX
 	for colIdx := range lev.board[0] {
 		wg.Add(1)
-		go fallAnimation(lev, colIdx, paintIdx, &wg, &mut)
-		paintIdx += 4
+		go fallAnimation(lev, colIdx, &wg, &mut)
 	}
 	wg.Wait()
+}
+
+func (lev level) isCursorNotInBounds() bool {
+	return lev.cursor.y < 0 || lev.cursor.y >= len(lev.board) ||
+		lev.cursor.x < 0 || lev.cursor.x >= len(lev.board[0])
 }
 
 func (lev *level) blinkCursor() {
@@ -74,6 +79,9 @@ func (lev *level) blinkCursor() {
 		if lev.isSelected {
 			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
 			break
+		}
+		if lev.isCursorNotInBounds() {
+			continue
 		}
 		if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
 			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
@@ -127,21 +135,6 @@ func (lev *level) blinkAdjacent() {
 	}
 }
 
-/*
-0 -> 3
-1 -> 7
-2 -> 11
-
-4x + 3
-
-0 -> 2
-1 -> 4
-2 -> 6
-
-2x + 2
-
-*/
-
 func coordX(posX, x int) int {
 	return 4*x + posX
 }
@@ -160,7 +153,7 @@ func (lev *level) swapAnimation(x, y int) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	var xidx int = 0
+	xidx := 0
 
 	if x == -2 {
 		xidx = -1
