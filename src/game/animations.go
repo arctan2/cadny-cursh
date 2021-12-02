@@ -127,10 +127,38 @@ func (lev *level) blinkAdjacent() {
 	}
 }
 
+/*
+0 -> 3
+1 -> 7
+2 -> 11
+
+4x + 3
+
+0 -> 2
+1 -> 4
+2 -> 6
+
+2x + 2
+
+*/
+
+func coordX(posX, x int) int {
+	return 4*x + posX
+}
+
+func coordY(posY, y int) int {
+	return 2*y + posY
+}
+
+type cellState struct {
+	x, y  int
+	color termbox.Attribute
+}
+
 func (lev *level) swapAnimation(x, y int) {
-	// sleep := func() {
-	// 	time.Sleep(time.Millisecond * 2000)
-	// }
+	sleep := func() {
+		time.Sleep(time.Millisecond * 100)
+	}
 
 	var xidx int = 0
 
@@ -139,7 +167,30 @@ func (lev *level) swapAnimation(x, y int) {
 	} else if x == 2 {
 		xidx = 1
 	}
-
 	curColor, adjColor := lev.board[lev.cursor.y][lev.cursor.x].color, lev.board[lev.cursor.y+y][lev.cursor.x+xidx].color
+
+	sequence := [][]cellState{
+		{
+			{coordX(lev.posX, lev.cursor.x), coordY(lev.posY, lev.cursor.y), defaultColor},
+			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, curColor},
+		},
+		{
+			{coordX(lev.posX, lev.cursor.x) + x*2, coordY(lev.posY, lev.cursor.y) + y*2, curColor},
+			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, adjColor},
+		},
+		{
+			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, defaultColor},
+			{coordX(lev.posX, lev.cursor.x), coordY(lev.posY, lev.cursor.y), adjColor},
+		},
+	}
+
+	for _, stateGroup := range sequence {
+		for _, state := range stateGroup {
+			setBg(state.x, state.y, state.color)
+		}
+		termbox.Flush()
+		sleep()
+	}
+
 	lev.board[lev.cursor.y][lev.cursor.x].color, lev.board[lev.cursor.y+y][lev.cursor.x+xidx].color = adjColor, curColor
 }
