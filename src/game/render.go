@@ -1,6 +1,8 @@
 package game
 
-import "github.com/nsf/termbox-go"
+import (
+	"github.com/nsf/termbox-go"
+)
 
 var (
 	defaultColor   = termbox.ColorDefault
@@ -18,6 +20,7 @@ func (l *level) render() {
 
 func renderBoard(lev *level, startX, startY int) {
 	x, y := startX, startY
+
 	for _, row := range lev.board {
 		for _, candy := range row {
 			setBg(x, y, candy.color)

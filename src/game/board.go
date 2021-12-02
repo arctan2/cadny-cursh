@@ -27,5 +27,18 @@ func (lev *level) initBoard() {
 	}
 
 	initBoardAnimation(lev)
-	go blinkCursor(lev)
+	go lev.blinkCursor()
+}
+
+func (lev *level) makeMove(dir string) {
+	switch dir {
+	case "up":
+		lev.swapAnimation(0, -1)
+	case "down":
+		lev.swapAnimation(0, 1)
+	case "left":
+		lev.swapAnimation(-2, 0)
+	case "right":
+		lev.swapAnimation(2, 0)
+	}
 }

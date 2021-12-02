@@ -8,26 +8,28 @@ import (
 )
 
 type level struct {
-	board  [][]candy
-	posX   int
-	posY   int
-	cursor cursor
+	board      [][]candy
+	posX       int
+	posY       int
+	cursor     cursor
+	isSelected bool
 }
 
-type cursor struct {
+type coord struct {
 	x, y int
 }
+type cursor coord
 
 func newLevel(rowCount, colCount, posX, posY int) *level {
 	newBoard := make([][]candy, rowCount)
 	for i := range newBoard {
 		newBoard[i] = make([]candy, colCount)
 	}
-	l := level{newBoard, posX, posY, cursor{}}
+	l := level{newBoard, posX, posY, cursor{}, false}
 	return &l
 }
 
-func validateCursor(curs *cursor, xmax, ymax int) {
+func validateCursor(curs cursor, xmax, ymax int) {
 	if curs.x < 0 {
 		curs.x = xmax - 1
 	} else if curs.x >= xmax {
@@ -41,23 +43,72 @@ func validateCursor(curs *cursor, xmax, ymax int) {
 	}
 }
 
+func (lev *level) navigate(kEvent keyboardEvent) {
+	if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
+		lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
+	}
+	switch kEvent.key {
+	case termbox.KeyArrowDown:
+		lev.cursor.y++
+	case termbox.KeyArrowUp:
+		lev.cursor.y--
+	case termbox.KeyArrowLeft:
+		lev.cursor.x--
+	case termbox.KeyArrowRight:
+		lev.cursor.x++
+	}
+	validateCursor(lev.cursor, len(lev.board[0]), len(lev.board))
+}
+
+func (lev *level) toggleSelected() bool {
+	lev.isSelected = !lev.isSelected
+	return lev.isSelected
+}
+
+func (lev *level) move(kEvent keyboardEvent) {
+	lev.isSelected = false
+
+	for adj := range adjacentColors {
+		lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = adjacentColors[adj].color
+	}
+	lev.render()
+	switch kEvent.key {
+	case termbox.KeyArrowDown:
+		if lev.cursor.y+1 >= len(lev.board) {
+			break
+		}
+		lev.makeMove("down")
+	case termbox.KeyArrowUp:
+		if lev.cursor.y-1 < 0 {
+			break
+		}
+		lev.makeMove("up")
+	case termbox.KeyArrowLeft:
+		if lev.cursor.x-1 < 0 {
+			break
+		}
+		lev.makeMove("left")
+	case termbox.KeyArrowRight:
+		if lev.cursor.x+1 >= len(lev.board[0]) {
+			break
+		}
+		lev.makeMove("right")
+	}
+	go lev.blinkCursor()
+}
+
 func (lev *level) handleKeyboardEvent(kEvent keyboardEvent) bool {
 	switch kEvent.eventType {
+	case NAVIGATE:
+		lev.navigate(kEvent)
+	case SELECT:
+		if selected := lev.toggleSelected(); selected {
+			go lev.blinkAdjacent()
+		} else {
+			go lev.blinkCursor()
+		}
 	case MOVE:
-		if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
-			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
-		}
-		switch kEvent.key {
-		case termbox.KeyArrowDown:
-			lev.cursor.y++
-		case termbox.KeyArrowUp:
-			lev.cursor.y--
-		case termbox.KeyArrowLeft:
-			lev.cursor.x--
-		case termbox.KeyArrowRight:
-			lev.cursor.x++
-		}
-		validateCursor(&lev.cursor, len(lev.board[0]), len(lev.board))
+		lev.move(kEvent)
 	case END:
 		return true
 	}
@@ -81,7 +132,7 @@ func Start() {
 
 	var keyboardChan chan keyboardEvent = make(chan keyboardEvent)
 
-	go listenToKeyboard(keyboardChan)
+	go listenToKeyboard(&lev.isSelected, keyboardChan)
 
 mainloop:
 	for {
