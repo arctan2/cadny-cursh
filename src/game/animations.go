@@ -8,8 +8,22 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+type adjacentColorMap map[string]adjacentCell
+
+type adjacentCell struct {
+	color termbox.Attribute
+	index coord
+}
+
 var prevCellColor termbox.Attribute
 var adjacentColors adjacentColorMap
+
+func (adj adjacentColorMap) repaintCells(lev *level) {
+	for adj := range adjacentColors {
+		lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = adjacentColors[adj].color
+	}
+	lev.render()
+}
 
 func setBg(x, y int, candyColor termbox.Attribute) {
 	termbox.SetBg(x, y, candyColor)
@@ -32,8 +46,8 @@ x ->  6, p ->  4, a ->  2
 */
 
 func fallAnimation(lev *level, colIdx int, wg *sync.WaitGroup, mut *sync.Mutex) {
-	rowCount := len(lev.board)
-	candiesPosY := make([]int, len(lev.board))
+	rowCount := lev.ymax + 1
+	candiesPosY := make([]int, rowCount)
 	paintIdx := coordX(lev.posX, colIdx)
 
 	for i, yPos := 0, (rowCount*2-1)*-1; i < rowCount; i, yPos = i+1, yPos+2 {
@@ -70,8 +84,8 @@ func initBoardAnimation(lev *level) {
 }
 
 func (lev level) isCursorNotInBounds() bool {
-	return lev.cursor.y < 0 || lev.cursor.y >= len(lev.board) ||
-		lev.cursor.x < 0 || lev.cursor.x >= len(lev.board[0])
+	return lev.cursor.y < 0 || lev.cursor.y >= lev.ymax ||
+		lev.cursor.x < 0 || lev.cursor.x >= lev.xmax
 }
 
 func (lev *level) blinkCursor() {
@@ -93,13 +107,6 @@ func (lev *level) blinkCursor() {
 	}
 }
 
-type adjacentColorMap map[string]adjacentCell
-
-type adjacentCell struct {
-	color termbox.Attribute
-	index coord
-}
-
 func getAdjacentMap(board [][]candy, curs *cursor, xmax, ymax int) adjacentColorMap {
 	adjacentColors := make(adjacentColorMap)
 	if curs.x-1 >= 0 {
@@ -119,7 +126,7 @@ func getAdjacentMap(board [][]candy, curs *cursor, xmax, ymax int) adjacentColor
 }
 
 func (lev *level) blinkAdjacent() {
-	adjacentColors = getAdjacentMap(lev.board, &lev.cursor, len(lev.board[0])-1, len(lev.board)-1)
+	adjacentColors = getAdjacentMap(lev.board, &lev.cursor, lev.xmax, lev.ymax)
 	for {
 		if !lev.isSelected {
 			break

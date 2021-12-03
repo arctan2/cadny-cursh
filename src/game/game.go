@@ -10,11 +10,10 @@ import (
 type board [][]candy
 
 type level struct {
-	board      board
-	posX       int
-	posY       int
-	cursor     cursor
-	isSelected bool
+	board                  board
+	posX, posY, xmax, ymax int
+	cursor                 cursor
+	isSelected             bool
 }
 
 type coord struct {
@@ -27,7 +26,15 @@ func newLevel(rowCount, colCount, posX, posY int) *level {
 	for i := range newBoard {
 		newBoard[i] = make([]candy, colCount)
 	}
-	l := level{newBoard, posX, posY, cursor{}, false}
+	l := level{
+		board:      newBoard,
+		posX:       posX,
+		posY:       posY,
+		xmax:       colCount - 1,
+		ymax:       rowCount - 1,
+		cursor:     cursor{},
+		isSelected: false,
+	}
 	return &l
 }
 
@@ -72,11 +79,7 @@ func (lev *level) toggleSelected() bool {
 
 func (lev *level) move(kEvent keyboardEvent) {
 	lev.isSelected = false
-
-	for adj := range adjacentColors {
-		lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = adjacentColors[adj].color
-	}
-	lev.render()
+	adjacentColors.repaintCells(lev)
 	switch kEvent.key {
 	case termbox.KeyArrowDown:
 		if lev.cursor.y+1 >= len(lev.board) {
@@ -110,6 +113,7 @@ func (lev *level) handleKeyboardEvent(kEvent keyboardEvent) bool {
 		if selected := lev.toggleSelected(); selected {
 			go lev.blinkAdjacent()
 		} else {
+			adjacentColors.repaintCells(lev)
 			go lev.blinkCursor()
 		}
 	case MOVE:
@@ -131,7 +135,7 @@ func Start() {
 		utils.Clrscr()
 	}()
 
-	lev := newLevel(8, 8, 3, 2)
+	lev := newLevel(3, 3, 3, 2)
 
 	lev.initBoard()
 
