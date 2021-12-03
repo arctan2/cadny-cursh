@@ -7,8 +7,10 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+type board [][]candy
+
 type level struct {
-	board      [][]candy
+	board      board
 	posX       int
 	posY       int
 	cursor     cursor
