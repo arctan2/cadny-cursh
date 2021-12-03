@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -27,33 +26,28 @@ func (b board) getMax() (int, int) {
 
 type matchFunc func(int, int, termbox.Attribute) bool
 
-func (b board) testPossibles(possibles possibleType, color termbox.Attribute, testFunc matchFunc, ch chan bool, mut *sync.Mutex) {
-	mut.Lock()
+func (b board) testPossibles(possibles possibleType, color termbox.Attribute, testFunc matchFunc, ch chan bool) {
 	for _, possible := range possibles {
 		if testFunc(possible.x, possible.y, color) {
 			ch <- true
-			mut.Unlock()
 			return
 		}
 	}
-	mut.Unlock()
 	ch <- false
 }
 
 func (b board) hasNoPossibleMoves() bool {
 	for y := range b {
 		for x := range b[y] {
-			horizPossibles := getHorizPossibles(x, y)
-			verticPossibles := getVerticPossibles(x, y)
-
 			hChan := make(chan bool)
 			vChan := make(chan bool)
-			var mut sync.Mutex
+			eqChan := make(chan bool)
 
-			go b.testPossibles(horizPossibles, b[y][x].color, b.hasHorizMatchFrom, hChan, &mut)
-			go b.testPossibles(verticPossibles, b[y][x].color, b.hasVericMatchFrom, vChan, &mut)
+			go b.testPossibles(getHorizPossibles(x, y), b[y][x].color, b.hasHorizMatchFrom, hChan)
+			go b.testPossibles(getVerticPossibles(x, y), b[y][x].color, b.hasVericMatchFrom, vChan)
+			go b.anyOfGroupMatch(getMidPossibles(x, y), b[y][x].color, eqChan)
 
-			if hRes, vRes := <-hChan, <-vChan; hRes || vRes {
+			if <-hChan || <-vChan || <-eqChan {
 				return false
 			}
 		}
@@ -61,13 +55,22 @@ func (b board) hasNoPossibleMoves() bool {
 	return true
 }
 
-func (b board) hasHorizMatchFrom(x, y int, color termbox.Attribute) bool {
+func (b board) xyNotInBounds(x, y int) bool {
 	xmax, ymax := b.getMax()
-	if y > ymax || y < 0 {
+	if y > ymax || y < 0 || x > xmax || x < 0 {
+		return true
+	}
+	return false
+}
+
+func (b board) hasHorizMatchFrom(x, y int, color termbox.Attribute) bool {
+	if b.xyNotInBounds(x, y) {
 		return false
 	}
-	if x+1 <= xmax && x+2 <= xmax && x >= 0 {
-		if b[y][x+1].color == color && b[y][x+2].color == color {
+
+	xmax, _ := b.getMax()
+	if x+1 <= xmax {
+		if b[y][x].color == color && b[y][x+1].color == color {
 			return true
 		}
 	}
@@ -75,29 +78,51 @@ func (b board) hasHorizMatchFrom(x, y int, color termbox.Attribute) bool {
 }
 
 func (b board) hasVericMatchFrom(x, y int, color termbox.Attribute) bool {
-	xmax, ymax := b.getMax()
-	if x > xmax || x < 0 {
+	if b.xyNotInBounds(x, y) {
 		return false
 	}
-	if y+1 <= ymax && y+2 <= ymax && y >= 0 {
-		if b[y+1][x].color == color && b[y+2][x].color == color {
+	_, ymax := b.getMax()
+	if y+1 <= ymax {
+		if b[y][x].color == color && b[y+1][x].color == color {
 			return true
 		}
 	}
 	return false
 }
 
+func (b board) anyOfGroupMatch(groups []possibleType, color termbox.Attribute, eqChan chan bool) {
+	for _, group := range groups {
+		s := areAllSame(b, group, color)
+		if s {
+			eqChan <- true
+		}
+	}
+	eqChan <- false
+}
+
+func areAllSame(b board, group []coord, color termbox.Attribute) bool {
+	for _, c := range group {
+		if b.xyNotInBounds(c.x, c.y) {
+			return false
+		}
+		if b[c.y][c.x].color != color {
+			return false
+		}
+	}
+	return true
+}
+
 func (b board) scanAndReplaceMatches(y int, colors map[int]termbox.Attribute, wg *sync.WaitGroup, mut *sync.Mutex) {
 	for x := range b[y] {
 		color := b[y][x].color
-		if b.hasVericMatchFrom(x, y, color) {
+		if b.hasVericMatchFrom(x, y+1, color) {
 			mut.Lock()
 			for b[y+2][x].color == color {
 				b[y+2][x] = candy{colors[rand.Intn(4)]}
 			}
 			mut.Unlock()
 		}
-		if b.hasHorizMatchFrom(x, y, color) {
+		if b.hasHorizMatchFrom(x+1, y, color) {
 			mut.Lock()
 			for b[y][x+2].color == color {
 				b[y][x+2] = candy{colors[rand.Intn(4)]}
@@ -129,7 +154,12 @@ func (lev *level) initBoard() {
 
 	lev.board.generateRandomCandies(colors)
 	lev.board.checkAndReplaceMatches(colors)
-	fmt.Println(lev.board.hasNoPossibleMoves())
+	if lev.board.hasNoPossibleMoves() {
+		for lev.board.hasNoPossibleMoves() {
+			lev.board.generateRandomCandies(colors)
+			lev.board.checkAndReplaceMatches(colors)
+		}
+	}
 	initBoardAnimation(lev)
 	go lev.blinkCursor()
 }
