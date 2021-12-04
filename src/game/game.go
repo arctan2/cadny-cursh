@@ -14,6 +14,15 @@ type level struct {
 	posX, posY, xmax, ymax int
 	cursor                 cursor
 	isSelected             bool
+	blinkCh                chan bool
+}
+
+func (lev *level) startBlink() {
+	go lev.blinkCursor(lev.blinkCh)
+}
+
+func (lev *level) stopBlink() {
+	lev.blinkCh <- true
 }
 
 type coord struct {
@@ -34,6 +43,7 @@ func newLevel(rowCount, colCount, posX, posY int) *level {
 		ymax:       rowCount - 1,
 		cursor:     cursor{},
 		isSelected: false,
+		blinkCh:    make(chan bool),
 	}
 	return &l
 }
@@ -55,10 +65,13 @@ func (lev *level) validateCursor() {
 	}
 }
 
-func (lev *level) navigate(kEvent keyboardEvent) {
+func (lev *level) repaintCurCell() {
 	if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
 		lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
 	}
+}
+
+func (lev *level) navigate(kEvent keyboardEvent) {
 	switch kEvent.key {
 	case termbox.KeyArrowDown:
 		lev.cursor.y++
@@ -102,10 +115,11 @@ func (lev *level) move(kEvent keyboardEvent) {
 		}
 		lev.makeMove("right")
 	}
-	go lev.blinkCursor()
 }
 
-func (lev *level) handleKeyboardEvent(kEvent keyboardEvent) bool {
+func (lev *level) handleKeyboardEvent(kEvent keyboardEvent, kbProc *keyboardEvProcess) bool {
+	lev.stopBlink()
+	lev.repaintCurCell()
 	switch kEvent.eventType {
 	case NAVIGATE:
 		lev.navigate(kEvent)
@@ -114,13 +128,15 @@ func (lev *level) handleKeyboardEvent(kEvent keyboardEvent) bool {
 			go lev.blinkAdjacent()
 		} else {
 			adjacentColors.repaintCells(lev)
-			go lev.blinkCursor()
 		}
 	case MOVE:
+		kbProc.pause()
 		lev.move(kEvent)
+		kbProc.resume()
 	case END:
 		return true
 	}
+	lev.startBlink()
 	return false
 }
 
@@ -135,19 +151,21 @@ func Start() {
 		utils.Clrscr()
 	}()
 
-	lev := newLevel(3, 3, 3, 2)
+	lev := newLevel(8, 8, 3, 2)
 
 	lev.initBoard()
 
 	var keyboardChan chan keyboardEvent = make(chan keyboardEvent)
 
-	go listenToKeyboard(&lev.isSelected, keyboardChan)
+	var kbProc keyboardEvProcess = false
+
+	go listenToKeyboard(&lev.isSelected, keyboardChan, &kbProc)
 
 mainloop:
 	for {
 		select {
 		case e := <-keyboardChan:
-			if breakLoop := lev.handleKeyboardEvent(e); breakLoop {
+			if breakLoop := lev.handleKeyboardEvent(e, &kbProc); breakLoop {
 				break mainloop
 			}
 		default:

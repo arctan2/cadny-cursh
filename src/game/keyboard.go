@@ -6,7 +6,6 @@ import (
 
 type keyboardEventType int
 
-// Keyboard events
 const (
 	END keyboardEventType = 1 + iota
 	NAVIGATE
@@ -14,12 +13,21 @@ const (
 	MOVE
 )
 
+type keyboardEvProcess bool
+
+func (s *keyboardEvProcess) pause() {
+	*s = true
+}
+func (s *keyboardEvProcess) resume() {
+	*s = false
+}
+
 type keyboardEvent struct {
 	eventType keyboardEventType
 	key       termbox.Key
 }
 
-func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent) {
+func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent, stopKeyBoardEvent *keyboardEvProcess) {
 	termbox.SetInputMode(termbox.InputEsc)
 
 	for {
@@ -33,6 +41,9 @@ func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent) {
 			case termbox.KeyArrowRight:
 				fallthrough
 			case termbox.KeyArrowUp:
+				if *stopKeyBoardEvent {
+					break
+				}
 				if *isSelected {
 					evChan <- keyboardEvent{eventType: MOVE, key: ev.Key}
 				} else {
@@ -41,6 +52,9 @@ func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent) {
 			case termbox.KeyEsc:
 				evChan <- keyboardEvent{eventType: END, key: ev.Key}
 			case termbox.KeySpace:
+				if *stopKeyBoardEvent {
+					break
+				}
 				evChan <- keyboardEvent{eventType: SELECT}
 			}
 		case termbox.EventError:

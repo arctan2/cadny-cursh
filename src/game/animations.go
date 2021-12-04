@@ -8,28 +8,6 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-type adjacentColorMap map[string]adjacentCell
-
-type adjacentCell struct {
-	color termbox.Attribute
-	index coord
-}
-
-var prevCellColor termbox.Attribute
-var adjacentColors adjacentColorMap
-
-func (adj adjacentColorMap) repaintCells(lev *level) {
-	for adj := range adjacentColors {
-		lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = adjacentColors[adj].color
-	}
-	lev.render()
-}
-
-func setBg(x, y int, candyColor termbox.Attribute) {
-	termbox.SetBg(x, y, candyColor)
-	termbox.SetBg(x+1, y, candyColor)
-}
-
 /*
 [
 	[a, b, c],
@@ -81,73 +59,6 @@ func initBoardAnimation(lev *level) {
 		go fallAnimation(lev, colIdx, &wg, &mut)
 	}
 	wg.Wait()
-}
-
-func (lev level) isCursorNotInBounds() bool {
-	return lev.cursor.y < 0 || lev.cursor.y >= lev.ymax ||
-		lev.cursor.x < 0 || lev.cursor.x >= lev.xmax
-}
-
-func (lev *level) blinkCursor() {
-	for {
-		if lev.isSelected {
-			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
-			break
-		}
-		if lev.isCursorNotInBounds() {
-			continue
-		}
-		if lev.board[lev.cursor.y][lev.cursor.x].color == defaultColor {
-			lev.board[lev.cursor.y][lev.cursor.x].color = prevCellColor
-		} else {
-			prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
-			lev.board[lev.cursor.y][lev.cursor.x].color = defaultColor
-		}
-		time.Sleep(time.Millisecond * 300)
-	}
-}
-
-func getAdjacentMap(board [][]candy, curs *cursor, xmax, ymax int) adjacentColorMap {
-	adjacentColors := make(adjacentColorMap)
-	if curs.x-1 >= 0 {
-		adjacentColors["left"] = adjacentCell{board[curs.y][curs.x-1].color, coord{curs.x - 1, curs.y}}
-	}
-	if curs.x+1 <= xmax {
-		adjacentColors["right"] = adjacentCell{board[curs.y][curs.x+1].color, coord{curs.x + 1, curs.y}}
-	}
-	if curs.y-1 >= 0 {
-		adjacentColors["up"] = adjacentCell{board[curs.y-1][curs.x].color, coord{curs.x, curs.y - 1}}
-	}
-	if curs.y+1 <= ymax {
-		adjacentColors["down"] = adjacentCell{board[curs.y+1][curs.x].color, coord{curs.x, curs.y + 1}}
-	}
-
-	return adjacentColors
-}
-
-func (lev *level) blinkAdjacent() {
-	adjacentColors = getAdjacentMap(lev.board, &lev.cursor, lev.xmax, lev.ymax)
-	for {
-		if !lev.isSelected {
-			break
-		}
-		for adj := range adjacentColors {
-			if lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color == defaultColor {
-				lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = adjacentColors[adj].color
-			} else {
-				lev.board[adjacentColors[adj].index.y][adjacentColors[adj].index.x].color = defaultColor
-			}
-		}
-		time.Sleep(time.Millisecond * 50)
-	}
-}
-
-func coordX(posX, x int) int {
-	return 4*x + posX
-}
-
-func coordY(posY, y int) int {
-	return 2*y + posY
 }
 
 type cellState struct {
