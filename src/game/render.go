@@ -5,15 +5,13 @@ import (
 )
 
 var (
-	defaultColor   = termbox.ColorDefault
-	boardStartPosX = 3
-	boardStartPosY = 2
+	defaultColor = termbox.ColorDefault
 )
 
 func (l *level) render() {
 	termbox.Clear(defaultColor, defaultColor)
 
-	renderBoard(l, boardStartPosX, boardStartPosY)
+	renderBoard(l, l.posX, l.posY)
 
 	termbox.Flush()
 }

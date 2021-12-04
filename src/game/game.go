@@ -151,7 +151,7 @@ func Start() {
 		utils.Clrscr()
 	}()
 
-	lev := newLevel(8, 8, 3, 2)
+	lev := newLevel(5, 5, 8, 5)
 
 	lev.initBoard()
 
