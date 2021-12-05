@@ -11,7 +11,7 @@ type candy struct {
 	color termbox.Attribute
 }
 
-func (b board) generateRandomCandies(colors map[int]termbox.Attribute) {
+func (b board) generateRandomCandies() {
 	for i := 0; i < len(b); i++ {
 		for j := 0; j < len(b[i]); j++ {
 			b[i][j] = candy{colors[rand.Intn(4)]}
@@ -111,7 +111,7 @@ func areAllSame(b board, group []coord, color termbox.Attribute) bool {
 	return true
 }
 
-func (b board) scanAndReplaceMatches(y int, colors map[int]termbox.Attribute, wg *sync.WaitGroup, mut *sync.Mutex) {
+func (b board) scanAndReplaceMatches(y int, wg *sync.WaitGroup, mut *sync.Mutex) {
 	for x := range b[y] {
 		color := b[y][x].color
 		if b.hasVericMatchFrom(x, y+1, color) {
@@ -132,12 +132,12 @@ func (b board) scanAndReplaceMatches(y int, colors map[int]termbox.Attribute, wg
 	wg.Done()
 }
 
-func (b board) checkAndReplaceMatches(colors map[int]termbox.Attribute) {
+func (b board) checkAndReplaceMatches() {
 	var wg sync.WaitGroup
 	var mut sync.Mutex
 	for i := 0; i < len(b); i++ {
 		wg.Add(1)
-		go b.scanAndReplaceMatches(i, colors, &wg, &mut)
+		go b.scanAndReplaceMatches(i, &wg, &mut)
 	}
 	wg.Wait()
 }
