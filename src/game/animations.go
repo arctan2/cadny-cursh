@@ -1,7 +1,7 @@
 package game
 
 import (
-	"math/rand"
+	"math"
 	"sync"
 	"time"
 
@@ -23,7 +23,7 @@ x ->  5, p ->  3, a -> -1
 x ->  6, p ->  4, a ->  2
 */
 
-func fallAnimation(lev *level, colIdx int, wg *sync.WaitGroup, mut *sync.Mutex) {
+func fallAnimation(lev *level, colIdx int, iterTo int, duration float64, wg *sync.WaitGroup, mut *sync.Mutex) {
 	rowCount := lev.ymax + 1
 	candiesPosY := make([]int, rowCount)
 	paintIdx := coordX(lev.posX, colIdx)
@@ -32,7 +32,7 @@ func fallAnimation(lev *level, colIdx int, wg *sync.WaitGroup, mut *sync.Mutex) 
 		candiesPosY[i] = yPos
 	}
 
-	for iterCount := 0; iterCount < rowCount*2; iterCount++ {
+	for iterCount := 0; iterCount < iterTo; iterCount++ {
 		for i := rowCount - 1; i >= 0; i-- {
 			setBg(paintIdx, candiesPosY[i], lev.board[i][colIdx].color)
 			setBg(paintIdx, candiesPosY[i]-1, defaultColor)
@@ -45,7 +45,7 @@ func fallAnimation(lev *level, colIdx int, wg *sync.WaitGroup, mut *sync.Mutex) 
 		mut.Lock()
 		termbox.Flush()
 		mut.Unlock()
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
+		time.Sleep(time.Millisecond * time.Duration(int(duration)))
 	}
 	wg.Done()
 }
@@ -56,7 +56,11 @@ func initBoardAnimation(lev *level) {
 
 	for colIdx := range lev.board[0] {
 		wg.Add(1)
-		go fallAnimation(lev, colIdx, &wg, &mut)
+		go fallAnimation(
+			lev, colIdx, len(lev.board)*2,
+			float64(math.Pow(float64(colIdx+2), 2.2))-float64(colIdx)+float64(50),
+			&wg, &mut,
+		)
 	}
 	wg.Wait()
 }

@@ -52,12 +52,16 @@ func (lev *level) makeMove(dir string) {
 	}
 
 	lev.swapAnimation(xmag, ymag)
-	if isMatched, affectedColumns := lev.board.analizeAtCoords(toAnalizeCoords); !isMatched {
+	if isMatched, affectedColumns := lev.board.analizeAtCoords(toAnalizeCoords, pos{lev.posX, lev.posY}); !isMatched {
 		lev.swapAnimation(xmag, ymag)
 	} else {
-		lev.board.fillVacancies(affectedColumns)
+		lev.fillVacancies(affectedColumns)
 		prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
 	}
+}
+
+type pos struct {
+	x, y int
 }
 
 type between struct {
@@ -94,11 +98,11 @@ func (b board) loopVerticTwice(x, y, mag int, color termbox.Attribute) int {
 	return val
 }
 
-func (b board) analizeAtCoords(coords []coord) (bool, between) {
+func (b board) analizeAtCoords(coords []coord, pos pos) (bool, between) {
 	var verticRange, horizRange between
 	var matched bool
 	var color termbox.Attribute
-	var affectedColumns between
+	var affectedColumns between = between{-1, -1}
 
 	for _, c := range coords {
 		color = b[c.y][c.x].color
@@ -110,34 +114,44 @@ func (b board) analizeAtCoords(coords []coord) (bool, between) {
 			from: b.loopVerticTwice(c.x, c.y, -1, color),
 			to:   b.loopVerticTwice(c.x, c.y, 1, color),
 		}
-		if affectedColumns.from > horizRange.from {
+
+		b.destroyMatches(horizRange, verticRange, c, &matched, pos)
+		if affectedColumns.from == -1 {
 			affectedColumns.from = horizRange.from
-		}
-		if affectedColumns.to < horizRange.to {
 			affectedColumns.to = horizRange.to
+		} else if matched {
+			if affectedColumns.from > horizRange.from || affectedColumns.from == -1 {
+				affectedColumns.from = horizRange.from
+			}
+			if affectedColumns.to < horizRange.to || affectedColumns.to == -1 {
+				affectedColumns.to = horizRange.to
+			}
 		}
-		b.destroyMatches(horizRange, verticRange, c, &matched)
 	}
 
 	return matched, affectedColumns
 }
 
-func (b board) destroyMatches(horizRange, verticRange between, c coord, matched *bool) {
+func (b board) destroyMatches(horizRange, verticRange between, c coord, matched *bool, pos pos) {
 	if horizRange.to-horizRange.from > 1 {
 		for i := horizRange.from; i <= horizRange.to; i++ {
 			b[c.y][i].color = defaultColor
+			setBg(coordX(pos.x, i), coordY(pos.y, c.y), defaultColor)
 		}
 		*matched = true
 	}
 	if verticRange.to-verticRange.from > 1 {
 		for i := verticRange.from; i <= verticRange.to; i++ {
 			b[i][c.x].color = defaultColor
+			setBg(coordX(pos.x, c.x), coordY(pos.y, i), defaultColor)
 		}
 		*matched = true
 	}
+	termbox.Flush()
 }
 
-func (b board) fallCandiesAndFillRandom(x int) {
+func (lev *level) fallCandiesAndFillRandom(x int) (int, int) {
+	b := lev.board
 	_, lastVacant := b.getMax()
 
 	for ; b[lastVacant][x].color != defaultColor; lastVacant-- {
@@ -147,24 +161,31 @@ func (b board) fallCandiesAndFillRandom(x int) {
 	}
 
 	lastCandy := lastVacant
+
 	for ; b[lastCandy][x].color == defaultColor; lastCandy-- {
 		if lastCandy == 0 {
+			lastCandy--
 			break
 		}
 	}
 
-	for ; lastCandy >= 0; lastCandy, lastVacant = lastCandy-1, lastVacant-1 {
-		b[lastVacant][x].color, b[lastCandy][x].color = b[lastCandy][x].color, b[lastVacant][x].color
+	for i, j := lastCandy, lastVacant; i >= 0; i, j = i-1, j-1 {
+		b[j][x].color, b[i][x].color = b[i][x].color, b[j][x].color
 	}
 
 	for i := 0; b[i][x].color == defaultColor; i++ {
 		b[i][x] = candy{colors[rand.Intn(4)]}
 	}
 
+	return lastVacant, lastCandy
 }
 
-func (b board) fillVacancies(btw between) {
+func (lev *level) fillVacancies(btw between) {
 	for i := btw.from; i <= btw.to; i++ {
-		b.fallCandiesAndFillRandom(i)
+		lv, _ := lev.fallCandiesAndFillRandom(i)
+		if lv <= 0 {
+			continue
+		}
+		// lev.fallAnim(lv, lc, i)
 	}
 }
