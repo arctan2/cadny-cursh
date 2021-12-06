@@ -2,6 +2,7 @@ package game
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/nsf/termbox-go"
@@ -181,11 +182,36 @@ func (lev *level) fallCandiesAndFillRandom(x int) (int, int) {
 }
 
 func (lev *level) fillVacancies(btw between) {
+	var wg sync.WaitGroup
+	var mut sync.Mutex
+
 	for i := btw.from; i <= btw.to; i++ {
-		lv, _ := lev.fallCandiesAndFillRandom(i)
+		lv, lc := lev.fallCandiesAndFillRandom(i)
 		if lv <= 0 {
 			continue
 		}
-		// lev.fallAnim(lv, lc, i)
+		wg.Add(1)
+		go lev.fallAnim(lv, lc, i, &wg, &mut)
 	}
+	wg.Wait()
+}
+
+func (lev *level) fallAnim(lv, lc, x int, wg *sync.WaitGroup, mut *sync.Mutex) {
+	rowCount := lv + 1
+	candiesPosY := make([]int, rowCount)
+	paintIdx := coordX(lev.posX, x)
+
+	for yPos, candIdx := ((lc+2)*2 + 1), lv; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
+		if yPos < lev.posY {
+			yPos = -2
+			for ; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
+				candiesPosY[candIdx] = yPos
+			}
+			break
+		}
+		candiesPosY[candIdx] = yPos
+	}
+
+	fall(lev, candiesPosY, rowCount, x, paintIdx, 50, mut)
+	wg.Done()
 }

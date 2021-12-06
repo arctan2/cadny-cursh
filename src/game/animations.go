@@ -23,18 +23,10 @@ x ->  5, p ->  3, a -> -1
 x ->  6, p ->  4, a ->  2
 */
 
-func fallAnimation(lev *level, colIdx int, iterTo int, duration float64, wg *sync.WaitGroup, mut *sync.Mutex) {
-	rowCount := lev.ymax + 1
-	candiesPosY := make([]int, rowCount)
-	paintIdx := coordX(lev.posX, colIdx)
-
-	for i, yPos := 0, (rowCount*2-1)*-1; i < rowCount; i, yPos = i+1, yPos+2 {
-		candiesPosY[i] = yPos
-	}
-
-	for iterCount := 0; iterCount < iterTo; iterCount++ {
+func fall(lev *level, candiesPosY []int, rowCount, x, paintIdx int, duration float64, mut *sync.Mutex) {
+	for iterCount := candiesPosY[0]; iterCount < 1; iterCount++ {
 		for i := rowCount - 1; i >= 0; i-- {
-			setBg(paintIdx, candiesPosY[i], lev.board[i][colIdx].color)
+			setBg(paintIdx, candiesPosY[i], lev.board[i][x].color)
 			setBg(paintIdx, candiesPosY[i]-1, defaultColor)
 
 			candiesPosY[i]++
@@ -47,6 +39,19 @@ func fallAnimation(lev *level, colIdx int, iterTo int, duration float64, wg *syn
 		mut.Unlock()
 		time.Sleep(time.Millisecond * time.Duration(int(duration)))
 	}
+}
+
+func fallAnimation(lev *level, x int, iterTo int, duration float64, wg *sync.WaitGroup, mut *sync.Mutex) {
+	rowCount := lev.ymax + 1
+	candiesPosY := make([]int, rowCount)
+	paintIdx := coordX(lev.posX, x)
+
+	for i, yPos := 0, (rowCount*2-1)*-1; i < rowCount; i, yPos = i+1, yPos+2 {
+		candiesPosY[i] = yPos
+	}
+
+	fall(lev, candiesPosY, rowCount, x, paintIdx, duration, mut)
+
 	wg.Done()
 }
 
