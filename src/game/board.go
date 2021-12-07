@@ -201,17 +201,28 @@ func (lev *level) fallCandiesAndFillRandom(x int) (int, int) {
 	return lastVacant, lastCandy
 }
 
+func (b board) hasVacancies(x int) bool {
+	for y := 0; y < len(b); y++ {
+		if b[y][x].color == defaultColor {
+			return true
+		}
+	}
+	return false
+}
+
 func (lev *level) fillVacancies(btw between) {
 	var wg sync.WaitGroup
 	var mut sync.Mutex
 
 	for i := btw.from; i <= btw.to; i++ {
-		lv, lc := lev.fallCandiesAndFillRandom(i)
-		if lv <= 0 {
-			continue
+		for lev.board.hasVacancies(i) {
+			lv, lc := lev.fallCandiesAndFillRandom(i)
+			if lv <= 0 {
+				continue
+			}
+			wg.Add(1)
+			go lev.fallAnim(lv, lc, i, &wg, &mut)
 		}
-		wg.Add(1)
-		go lev.fallAnim(lv, lc, i, &wg, &mut)
 	}
 	wg.Wait()
 }
