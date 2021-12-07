@@ -57,7 +57,20 @@ func (lev *level) makeMove(dir string) {
 		lev.swapAnimation(xmag, ymag)
 	} else {
 		lev.fillVacancies(affectedColumns)
+		lev.recursiveDestroyCandies()
 		prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
+	}
+}
+
+func (lev *level) recursiveDestroyCandies() {
+	for y := range lev.board {
+		for x := range lev.board[y] {
+			if isMatched, affectedColumns := lev.board.analizeAtCoords([]coord{{x, y}}, pos{lev.posX, lev.posY}); isMatched {
+				lev.fillVacancies(affectedColumns)
+				lev.recursiveDestroyCandies()
+				prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
+			}
+		}
 	}
 }
 
@@ -69,9 +82,9 @@ type between struct {
 	from, to int
 }
 
-func (b board) loopHorizTwice(x, y, mag int, color termbox.Attribute) int {
+func (b board) loopHoriz(x, y, mag int, color termbox.Attribute) int {
 	var val int = x
-	for i, newx := 1, 0; i <= 2; i++ {
+	for i, newx := 1, 0; ; i++ {
 		newx = x + (i * mag)
 		if !b.xyNotInBounds(newx, y) {
 			if b[y][newx].color == color {
@@ -79,14 +92,16 @@ func (b board) loopHorizTwice(x, y, mag int, color termbox.Attribute) int {
 			} else {
 				break
 			}
+		} else {
+			break
 		}
 	}
 	return val
 }
 
-func (b board) loopVerticTwice(x, y, mag int, color termbox.Attribute) int {
+func (b board) loopVertic(x, y, mag int, color termbox.Attribute) int {
 	var val int = y
-	for i, newy := 1, 0; i <= 2; i++ {
+	for i, newy := 1, 0; ; i++ {
 		newy = y + (i * mag)
 		if !b.xyNotInBounds(x, newy) {
 			if b[newy][x].color == color {
@@ -94,6 +109,8 @@ func (b board) loopVerticTwice(x, y, mag int, color termbox.Attribute) int {
 			} else {
 				break
 			}
+		} else {
+			break
 		}
 	}
 	return val
@@ -108,12 +125,12 @@ func (b board) analizeAtCoords(coords []coord, pos pos) (bool, between) {
 	for _, c := range coords {
 		color = b[c.y][c.x].color
 		horizRange = between{
-			from: b.loopHorizTwice(c.x, c.y, -1, color),
-			to:   b.loopHorizTwice(c.x, c.y, 1, color),
+			from: b.loopHoriz(c.x, c.y, -1, color),
+			to:   b.loopHoriz(c.x, c.y, 1, color),
 		}
 		verticRange = between{
-			from: b.loopVerticTwice(c.x, c.y, -1, color),
-			to:   b.loopVerticTwice(c.x, c.y, 1, color),
+			from: b.loopVertic(c.x, c.y, -1, color),
+			to:   b.loopVertic(c.x, c.y, 1, color),
 		}
 
 		b.destroyMatches(horizRange, verticRange, c, &matched, pos)
@@ -176,6 +193,9 @@ func (lev *level) fallCandiesAndFillRandom(x int) (int, int) {
 
 	for i := 0; b[i][x].color == defaultColor; i++ {
 		b[i][x] = candy{colors[rand.Intn(4)]}
+		if i+1 == len(lev.board) {
+			break
+		}
 	}
 
 	return lastVacant, lastCandy
