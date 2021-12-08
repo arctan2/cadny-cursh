@@ -21,11 +21,9 @@ func (lev *level) initBoard() {
 	rand.Seed(time.Now().UnixNano())
 	lev.board.generateRandomCandies()
 	lev.board.checkAndReplaceMatches()
-	for lev.board.hasNoPossibleMoves() {
-		lev.board.generateRandomCandies()
-		lev.board.checkAndReplaceMatches()
-	}
+	lev.checkNoPossibleMoves(false)
 	initBoardAnimation(lev)
+	lev.recursiveDestroyCandies()
 	lev.startBlink()
 }
 
@@ -53,19 +51,46 @@ func (lev *level) makeMove(dir string) {
 	}
 
 	lev.swapAnimation(xmag, ymag)
-	if isMatched, affectedColumns := lev.board.analizeAtCoords(toAnalizeCoords, pos{lev.posX, lev.posY}); !isMatched {
+	if isMatched, affectedColumns := lev.board.analizeAtCoords(toAnalizeCoords, pos{lev.coordX, lev.coordY}); !isMatched {
 		lev.swapAnimation(xmag, ymag)
 	} else {
 		lev.fillVacancies(affectedColumns)
 		lev.recursiveDestroyCandies()
 		prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
 	}
+	lev.checkNoPossibleMoves(true)
+}
+
+func (lev *level) checkNoPossibleMoves(animate bool) {
+	animTime := time.Millisecond * 20
+	for lev.board.hasNoPossibleMoves() {
+		if animate {
+			for y := range lev.board {
+				for x := range lev.board[y] {
+					setBg(lev.coordX(x), lev.coordY(y), defaultColor)
+					termbox.Flush()
+					time.Sleep(animTime)
+				}
+			}
+		}
+		lev.board.generateRandomCandies()
+		if animate {
+			for y := range lev.board {
+				for x := range lev.board[y] {
+					setBg(lev.coordX(x), lev.coordY(y), lev.board[y][x].color)
+					termbox.Flush()
+					time.Sleep(animTime)
+				}
+			}
+		}
+		lev.board.checkAndReplaceMatches()
+	}
 }
 
 func (lev *level) recursiveDestroyCandies() {
 	for y := range lev.board {
 		for x := range lev.board[y] {
-			if isMatched, affectedColumns := lev.board.analizeAtCoords([]coord{{x, y}}, pos{lev.posX, lev.posY}); isMatched {
+			if isMatched, affectedColumns := lev.board.analizeAtCoords([]coord{{x, y}}, pos{lev.coordX, lev.coordY}); isMatched {
 				lev.fillVacancies(affectedColumns)
 				lev.recursiveDestroyCandies()
 				prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
@@ -75,7 +100,7 @@ func (lev *level) recursiveDestroyCandies() {
 }
 
 type pos struct {
-	x, y int
+	x, y func(int) int
 }
 
 type between struct {
@@ -154,14 +179,14 @@ func (b board) destroyMatches(horizRange, verticRange between, c coord, matched 
 	if horizRange.to-horizRange.from > 1 {
 		for i := horizRange.from; i <= horizRange.to; i++ {
 			b[c.y][i].color = defaultColor
-			setBg(coordX(pos.x, i), coordY(pos.y, c.y), defaultColor)
+			setBg(pos.x(i), pos.y(c.y), defaultColor)
 		}
 		*matched = true
 	}
 	if verticRange.to-verticRange.from > 1 {
 		for i := verticRange.from; i <= verticRange.to; i++ {
 			b[i][c.x].color = defaultColor
-			setBg(coordX(pos.x, c.x), coordY(pos.y, i), defaultColor)
+			setBg(pos.x(c.x), pos.y(i), defaultColor)
 		}
 		*matched = true
 	}
@@ -230,7 +255,7 @@ func (lev *level) fillVacancies(btw between) {
 func (lev *level) fallAnim(lv, lc, x int, wg *sync.WaitGroup, mut *sync.Mutex) {
 	rowCount := lv + 1
 	candiesPosY := make([]int, rowCount)
-	paintIdx := coordX(lev.posX, x)
+	paintIdx := lev.coordX(x)
 
 	for yPos, candIdx := ((lc+2)*2 + 1), lv; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
 		if yPos < lev.posY {

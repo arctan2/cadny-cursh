@@ -44,7 +44,7 @@ func fall(lev *level, candiesPosY []int, rowCount, x, paintIdx int, duration flo
 func fallAnimation(lev *level, x int, iterTo int, duration float64, wg *sync.WaitGroup, mut *sync.Mutex) {
 	rowCount := lev.ymax + 1
 	candiesPosY := make([]int, rowCount)
-	paintIdx := coordX(lev.posX, x)
+	paintIdx := lev.coordX(x)
 
 	for i, yPos := 0, (rowCount*2-1)*-1; i < rowCount; i, yPos = i+1, yPos+2 {
 		candiesPosY[i] = yPos
@@ -63,7 +63,7 @@ func initBoardAnimation(lev *level) {
 		wg.Add(1)
 		go fallAnimation(
 			lev, colIdx, len(lev.board)*2,
-			float64(math.Pow(float64(colIdx+2), 2.2))-float64(colIdx)+float64(50),
+			float64(math.Pow(float64(colIdx+2), 2))-float64(colIdx)+float64(50),
 			&wg, &mut,
 		)
 	}
@@ -91,16 +91,16 @@ func (lev *level) swapAnimation(x, y int) {
 
 	sequence := [][]cellState{
 		{
-			{coordX(lev.posX, lev.cursor.x), coordY(lev.posY, lev.cursor.y), defaultColor},
-			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, curColor},
+			{lev.coordX(lev.cursor.x), lev.coordY(lev.cursor.y), defaultColor},
+			{lev.coordX(lev.cursor.x) + x, lev.coordY(lev.cursor.y) + y, curColor},
 		},
 		{
-			{coordX(lev.posX, lev.cursor.x) + x*2, coordY(lev.posY, lev.cursor.y) + y*2, curColor},
-			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, adjColor},
+			{lev.coordX(lev.cursor.x) + x*2, lev.coordY(lev.cursor.y) + y*2, curColor},
+			{lev.coordX(lev.cursor.x) + x, lev.coordY(lev.cursor.y) + y, adjColor},
 		},
 		{
-			{coordX(lev.posX, lev.cursor.x) + x, coordY(lev.posY, lev.cursor.y) + y, defaultColor},
-			{coordX(lev.posX, lev.cursor.x), coordY(lev.posY, lev.cursor.y), adjColor},
+			{lev.coordX(lev.cursor.x) + x, lev.coordY(lev.cursor.y) + y, defaultColor},
+			{lev.coordX(lev.cursor.x), lev.coordY(lev.cursor.y), adjColor},
 		},
 	}
 

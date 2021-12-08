@@ -7,12 +7,12 @@ func (lev level) isCursorNotInBounds() bool {
 		lev.cursor.x < 0 || lev.cursor.x > lev.xmax
 }
 
-func coordX(posX, x int) int {
-	return 4*x + posX
+func (lev level) coordX(x int) int {
+	return 4*x + lev.posX
 }
 
-func coordY(posY, y int) int {
-	return 2*y + posY
+func (lev level) coordY(y int) int {
+	return 2*y + lev.posY
 }
 
 type adjacentColorMap map[string]adjacentCell
