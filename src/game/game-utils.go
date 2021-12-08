@@ -1,6 +1,8 @@
 package game
 
-import "github.com/nsf/termbox-go"
+import (
+	"github.com/nsf/termbox-go"
+)
 
 func (lev *level) validateCursor() {
 	curs := &lev.cursor
@@ -68,5 +70,12 @@ func (lev *level) move(kEvent keyboardEvent) {
 			break
 		}
 		lev.makeMove("right")
+	}
+}
+
+func (lev *level) handleAfterMove() {
+	lev.movesLeft--
+	if lev.movesLeft == 0 {
+		gameOver = true
 	}
 }

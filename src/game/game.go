@@ -7,7 +7,22 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+var (
+	gameOver = false
+)
+
 type board [][]candy
+
+type coord struct {
+	x, y int
+}
+
+type cursor coord
+
+type displayElements struct {
+	points int
+	msg    string
+}
 
 type level struct {
 	board                  board
@@ -15,6 +30,18 @@ type level struct {
 	cursor                 cursor
 	isSelected             bool
 	blinkCh                chan bool
+	visuals                displayElements
+	movesLeft              int
+}
+
+func (d *displayElements) showMsg(msg string) {
+	d.msg = msg
+	time.Sleep(time.Second * 2)
+	d.msg = ""
+}
+
+func (d *displayElements) addPoint(points int) {
+	d.points += points
 }
 
 func (lev *level) startBlink() {
@@ -24,11 +51,6 @@ func (lev *level) startBlink() {
 func (lev *level) stopBlink() {
 	lev.blinkCh <- true
 }
-
-type coord struct {
-	x, y int
-}
-type cursor coord
 
 func newLevel(rowCount, colCount, posX, posY int) *level {
 	newBoard := make(board, rowCount)
@@ -44,6 +66,8 @@ func newLevel(rowCount, colCount, posX, posY int) *level {
 		cursor:     cursor{},
 		isSelected: false,
 		blinkCh:    make(chan bool),
+		visuals:    displayElements{0, ""},
+		movesLeft:  30,
 	}
 	return &l
 }
@@ -82,7 +106,7 @@ func Start() {
 		utils.Clrscr()
 	}()
 
-	lev := newLevel(4, 4, 5, 6)
+	lev := newLevel(8, 8, 5, 5)
 
 	lev.initBoard()
 
@@ -100,7 +124,13 @@ mainloop:
 				break mainloop
 			}
 		default:
-			lev.render()
+			if gameOver {
+				renderGameOver(lev.visuals.points)
+				<-keyboardChan
+				break mainloop
+			} else {
+				lev.render()
+			}
 			time.Sleep(time.Millisecond * 10)
 		}
 	}

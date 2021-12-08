@@ -51,9 +51,15 @@ func (lev *level) makeMove(dir string) {
 	}
 
 	lev.swapAnimation(xmag, ymag)
-	if isMatched, affectedColumns := lev.board.analizeAtCoords(toAnalizeCoords, pos{lev.coordX, lev.coordY}); !isMatched {
+	if isMatched, affectedColumns := lev.board.analizeAtCoords(
+		toAnalizeCoords,
+		pos{lev.coordX, lev.coordY},
+		lev.visuals.addPoint,
+	); !isMatched {
+		go lev.visuals.showMsg("no match!")
 		lev.swapAnimation(xmag, ymag)
 	} else {
+		lev.handleAfterMove()
 		lev.fillVacancies(affectedColumns)
 		lev.recursiveDestroyCandies()
 		prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
@@ -90,7 +96,11 @@ func (lev *level) checkNoPossibleMoves(animate bool) {
 func (lev *level) recursiveDestroyCandies() {
 	for y := range lev.board {
 		for x := range lev.board[y] {
-			if isMatched, affectedColumns := lev.board.analizeAtCoords([]coord{{x, y}}, pos{lev.coordX, lev.coordY}); isMatched {
+			if isMatched, affectedColumns := lev.board.analizeAtCoords(
+				[]coord{{x, y}},
+				pos{lev.coordX, lev.coordY},
+				lev.visuals.addPoint,
+			); isMatched {
 				lev.fillVacancies(affectedColumns)
 				lev.recursiveDestroyCandies()
 				prevCellColor = lev.board[lev.cursor.y][lev.cursor.x].color
@@ -141,7 +151,7 @@ func (b board) loopVertic(x, y, mag int, color termbox.Attribute) int {
 	return val
 }
 
-func (b board) analizeAtCoords(coords []coord, pos pos) (bool, between) {
+func (b board) analizeAtCoords(coords []coord, pos pos, addPoint func(int)) (bool, between) {
 	var verticRange, horizRange between
 	var matched bool
 	var color termbox.Attribute
@@ -158,7 +168,7 @@ func (b board) analizeAtCoords(coords []coord, pos pos) (bool, between) {
 			to:   b.loopVertic(c.x, c.y, 1, color),
 		}
 
-		b.destroyMatches(horizRange, verticRange, c, &matched, pos)
+		b.destroyMatches(horizRange, verticRange, c, &matched, pos, addPoint)
 		if affectedColumns.from == -1 {
 			affectedColumns.from = horizRange.from
 			affectedColumns.to = horizRange.to
@@ -175,11 +185,12 @@ func (b board) analizeAtCoords(coords []coord, pos pos) (bool, between) {
 	return matched, affectedColumns
 }
 
-func (b board) destroyMatches(horizRange, verticRange between, c coord, matched *bool, pos pos) {
+func (b board) destroyMatches(horizRange, verticRange between, c coord, matched *bool, pos pos, addPoint func(int)) {
 	if horizRange.to-horizRange.from > 1 {
 		for i := horizRange.from; i <= horizRange.to; i++ {
 			b[c.y][i].color = defaultColor
 			setBg(pos.x(i), pos.y(c.y), defaultColor)
+			addPoint(1)
 		}
 		*matched = true
 	}
@@ -187,6 +198,7 @@ func (b board) destroyMatches(horizRange, verticRange between, c coord, matched 
 		for i := verticRange.from; i <= verticRange.to; i++ {
 			b[i][c.x].color = defaultColor
 			setBg(pos.x(c.x), pos.y(i), defaultColor)
+			addPoint(1)
 		}
 		*matched = true
 	}

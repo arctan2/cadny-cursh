@@ -56,6 +56,10 @@ func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent, stopKeyBoardE
 					break
 				}
 				evChan <- keyboardEvent{eventType: SELECT}
+			default:
+				if gameOver {
+					evChan <- keyboardEvent{}
+				}
 			}
 		case termbox.EventError:
 			panic(ev.Err)
