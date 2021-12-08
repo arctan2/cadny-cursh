@@ -257,7 +257,15 @@ func (lev *level) fallAnim(lv, lc, x int, wg *sync.WaitGroup, mut *sync.Mutex) {
 	candiesPosY := make([]int, rowCount)
 	paintIdx := lev.coordX(x)
 
-	for yPos, candIdx := ((lc+2)*2 + 1), lv; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
+	var yPos int
+
+	if lev.posY%2 == 0 {
+		yPos = (lc + 2) * 2
+	} else {
+		yPos = (lc+2)*2 + 1
+	}
+
+	for candIdx := lv; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
 		if yPos < lev.posY {
 			yPos = -2
 			for ; candIdx >= 0; yPos, candIdx = yPos-2, candIdx-1 {
@@ -268,6 +276,6 @@ func (lev *level) fallAnim(lv, lc, x int, wg *sync.WaitGroup, mut *sync.Mutex) {
 		candiesPosY[candIdx] = yPos
 	}
 
-	fall(lev, candiesPosY, rowCount, x, paintIdx, 50, mut)
+	fall(lev, candiesPosY, x, paintIdx, 50, mut)
 	wg.Done()
 }

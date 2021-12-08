@@ -23,9 +23,9 @@ x ->  5, p ->  3, a -> -1
 x ->  6, p ->  4, a ->  2
 */
 
-func fall(lev *level, candiesPosY []int, rowCount, x, paintIdx int, duration float64, mut *sync.Mutex) {
+func fall(lev *level, candiesPosY []int, x, paintIdx int, duration float64, mut *sync.Mutex) {
 	for iterCount := candiesPosY[0]; iterCount < 1; iterCount++ {
-		for i := rowCount - 1; i >= 0; i-- {
+		for i := range candiesPosY {
 			setBg(paintIdx, candiesPosY[i], lev.board[i][x].color)
 			setBg(paintIdx, candiesPosY[i]-1, defaultColor)
 
@@ -50,7 +50,7 @@ func fallAnimation(lev *level, x int, iterTo int, duration float64, wg *sync.Wai
 		candiesPosY[i] = yPos
 	}
 
-	fall(lev, candiesPosY, rowCount, x, paintIdx, duration, mut)
+	fall(lev, candiesPosY, x, paintIdx, duration, mut)
 
 	wg.Done()
 }
