@@ -27,6 +27,38 @@ type keyboardEvent struct {
 	key       termbox.Key
 }
 
+func wasdControls(isSelected bool, evChan chan keyboardEvent, stopKeyBoardEvent keyboardEvProcess, ch rune) {
+	if stopKeyBoardEvent {
+		return
+	}
+	var k termbox.Key
+
+	switch ch {
+	case 'w':
+		fallthrough
+	case 'W':
+		k = termbox.KeyArrowUp
+	case 'a':
+		fallthrough
+	case 'A':
+		k = termbox.KeyArrowLeft
+	case 's':
+		fallthrough
+	case 'S':
+		k = termbox.KeyArrowDown
+	case 'd':
+		fallthrough
+	case 'D':
+		k = termbox.KeyArrowRight
+	}
+
+	if isSelected {
+		evChan <- keyboardEvent{eventType: MOVE, key: k}
+	} else {
+		evChan <- keyboardEvent{eventType: NAVIGATE, key: k}
+	}
+}
+
 func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent, stopKeyBoardEvent *keyboardEvProcess) {
 	termbox.SetInputMode(termbox.InputEsc)
 
@@ -59,6 +91,8 @@ func listenToKeyboard(isSelected *bool, evChan chan keyboardEvent, stopKeyBoardE
 			default:
 				if gameOver {
 					evChan <- keyboardEvent{}
+				} else {
+					wasdControls(*isSelected, evChan, *stopKeyBoardEvent, ev.Ch)
 				}
 			}
 		case termbox.EventError:
